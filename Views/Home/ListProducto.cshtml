@@ -1,0 +1,614 @@
+﻿@page
+@inject Microsoft.Extensions.Configuration.IConfiguration configuration
+@{
+    var connectionString = configuration.GetSection("ConnectionStrings:DefaultConnection").Value;
+
+    List<ProductoModel> productoModels = new();
+
+    string error = "";
+
+
+    string notification = (ViewBag.notification != null) ? ViewBag.notification : "";
+
+    try
+    {
+        ProductoRepository productoRepository = new();
+        productoModels = productoRepository.Read();
+    }
+    catch (Exception ex)
+    {
+        error = ex.Message;
+    }
+}
+
+@if (error.Length > 0)
+{
+    <div> @error</div>
+}
+@if (notification.Length > 0)
+{
+    <div class="alert alert-info" id="alert" style="display:none !important"> @notification</div>
+}
+<div class="card text-center">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" asp-area="" asp-controller="Home" asp-action="ListProducto">Productos</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="ListCategoria">Categoria</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="ListAccesorio">Accesorios</a>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="card text-center">
+            <div class="card-header productos">
+                <div class="name_table">Lista de Productos</div>
+                <div class="btn_reload"><button type="button" class="btn_reloadAccion" onclick="refreshMe()"><span tooltip="Actualizar"><i class="bi bi-arrow-clockwise"></i></span></button></div>
+            </div>
+            <div class="card-body product">
+                <table class="table table-bordered table-hover" id="tablaProducto">
+                    <thead class="insertar">
+                        <tr>
+                            <th></th>
+                            <th><input type="text" id="producto" placeholder="Producto" class="form-control" /></th>
+                            <th><input type="text" id="costo" placeholder="Costo" class="form-control" /> </th>
+                            <th><input type="text" id="serie" placeholder="Serie" class="form-control" /> </th>
+                            <th><input type="text" id="stock" placeholder="Stock" class="form-control" /> </th>
+                            <th>
+                                <select class="form-control" name="listStatus" id="estado">
+                                    <option value="Disponible">Disponible</option>
+                                    <option value="Agotado">Agotado</option>
+                                </select>
+                            </th>
+
+                            <th>
+                                <button type="button" class="btn btn-success" onclick="createRecord()">CREAR</button>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th>ID</th>
+                            <th>Producto</th>
+                            <th>Costo</th>
+                            <th>NºSerie</th>
+                            <th>Stock</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in productoModels)
+                        {
+                            <tr class="">
+                                <td scope="row"> @row.ProductoId </td>
+                                <td scope="row">
+                                    <input type="text" id="@row.ProductoId-producto" placeholder="Producto" value="@row.Producto" class="form-control" />
+                                </td>
+                                <td class="precio" scope="row">
+                                    <span>S/. </span>
+                                    <input type="text" id="@row.ProductoId-costo" placeholder="Costo" class="form-control" value="@row.Costo" />
+
+                                </td>
+                                <td scope="row">
+                                    <input type="text" id="@row.ProductoId-serie" placeholder="Serie" class="form-control" value="@row.Serie" />
+
+                                </td>
+                                <td scope="row">
+
+                                    <input type="text" id="@row.ProductoId-stock" placeholder="Stock" class="form-control" value="@row.Stock" />
+
+                                </td>
+                                <td scope="row">
+
+                                    <select class="form-control" name="listStatus" id="@row.ProductoId-estado">
+                                        <option value="@row.Estado">@row.Estado</option>
+                                        <option value="Disponible"><span class="dispo">Disponible</span></option>
+                                        <option value="Agotado">Agotado</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-light" onclick="updateRecord(@row.ProductoId)"><span tooltip="Guardar"><i class="bi bi-card-checklist"></i></span></button>
+                                    <button type="button" class="btn btn-light" onclick="deleteRecord(@row.ProductoId)"><span tooltip="Eliminar"><i class="bi bi-trash"></i></span></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <script>$(document).ready(function () {
+                        $('#tablaProducto').DataTable({
+                            responsive: true,
+                            language: {
+                                processing: "Tratamiento en curso...",
+                                search: "",
+                                lengthMenu: "_MENU_",
+                                info: "Mostrando de _START_ al _END_ de un total de _TOTAL_",
+                                infoEmpty: "No existen datos.",
+                                infoFiltered: "(filtrado de _MAX_ elementos en total)",
+                                infoPostFix: "",
+                                loadingRecords: "Cargando...",
+                                zeroRecords: "No se encontraron datos con tu busqueda",
+                                emptyTable: "No hay datos disponibles en la tabla.",
+                                paginate: {
+                                    first: "Primero",
+                                    previous: "<i class='bi bi-arrow-left-circle'></i>",
+                                    next: "<i class='bi bi-arrow-right-circle'></i>",
+                                    last: "Ultimo"
+                                },
+                                aria: {
+                                    sortAscending: ": active para ordenar la columna en orden ascendente",
+                                    sortDescending: ": active para ordenar la columna en orden descendente"
+                                }
+                            },
+                            columnDefs: [
+                                { responsivePriority: 1, targets: 0 },
+                                { responsivePriority: 10001, targets: 4 },
+                                { responsivePriority: 2, targets: -2 }
+                            ],
+
+                            lengthMenu: [[10, 25, -1], [10, 25, "All"]],
+                        });
+                        $("input.form-control.form-control-sm").attr("placeholder", "Buscar");
+                    });</script>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+        var url = "https://localhost:7170/api/productos";
+        var home = "@Url.RouteUrl(ViewContext.RouteData.Values)";
+        
+        function refreshMe() {
+            window.location.href = home;
+    };
+
+        function createRecord() {
+            $.ajax({
+                type: "post",
+                url: url,
+                contentType: "application/x-www-form-urlencoded",
+                data: {
+                    mode: "create",
+                    producto: $("#producto").val(),
+                    costo: $("#costo").val(),
+                    serie: $("#serie").val(),
+                    stock: $("#stock").val(),
+                    estado: $("#estado").val(),
+                }, beforeSend() {
+                    console.log("Waiiit waiit");
+                }, success: function (data) {
+                    if (data.status) {
+                       
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: false,
+                            showCloseButton: true,
+
+                            didOpen: (toast) => {
+                                toast.addEventListener('mouseenter', Swal.stopTimer)
+                                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                            }
+                        })
+
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Exito',
+                            text: 'Registro correctamente',
+                        });
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 3000);
+                        
+                    }
+                }, failure: function (xhr) {
+                    console.log(xhr.status);
+                }
+            })
+        };
+        function updateRecord(productoId) {
+            $.ajax({
+                type: "post",
+                url: url,
+                contentType: "application/x-www-form-urlencoded",
+                data: {
+                    mode: "update",
+                    producto: $("#" + productoId + "-producto").val(),
+                    costo: $("#" + productoId + "-costo").val(),
+                    serie: $("#" + productoId + "-serie").val(),
+                    stock: $("#" + productoId + "-stock").val(),
+                    estado: $("#" + productoId + "-estado").val(),
+                    productoId: productoId
+                }, beforeSend() {
+                    console.log("Waiiit waiit");
+                }, success: function (data) {
+                    if (data.status) {
+                       
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: false,
+                            showCloseButton: true,
+
+                            didOpen: (toast) => {
+                                toast.addEventListener('mouseenter', Swal.stopTimer)
+                                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                            }
+                        })
+
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Exito',
+                            text: 'Registro Actualizado correctamente',
+                        });
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 3000);
+                        
+                    }
+                }, failure: function (xhr) {
+                    console.log(xhr.status);
+                }
+            })
+        }
+        function deleteRecord(productoId) {
+
+            $.ajax({
+                type: "post",
+                url: url,
+                contentType: "application/x-www-form-urlencoded",
+                data: {
+                    mode: "delete",
+                    productoId: productoId
+                }, beforeSend() {
+                    console.log("Waiiit waiit");
+                }, success: function (data) {
+                    VistaProducto();
+                    if (data.status) {
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: false,
+                            showCloseButton: true,
+
+                            didOpen: (toast) => {
+                                toast.addEventListener('mouseenter', Swal.stopTimer)
+                                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                            }
+                        })
+
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Exito',
+                            text: 'Registro Eliminado correctamente',
+                        });
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 3000);
+                        
+                    }
+                }, failure: function (xhr) {
+                    console.log(xhr.status);
+                }
+            })
+        };
+</script>
+<style>
+    .card-header.productos {
+        display: flex !important;
+        justify-content: space-between !important;
+        padding: 2px 10px !important;
+        align-items: center !important;
+        background: black !important;
+        color: white !important;
+        font-size: 12px;
+    }
+    .card-body.product {
+        padding: 0px;
+    }
+    button.btn_reloadAccion {
+        background: transparent;
+        color: white;
+        border: none;
+        font-size: 20px;
+    }
+    /*alertas*/
+    /*alertas : error*/
+    .swal2-popup.swal2-toast.swal2-icon-error.swal2-show {
+        background: #fe3e3ee5;
+        color: white;
+        font-size: 12.5px;
+        -webkit-backdrop-filter: saturate(20%) blur(10px);
+        backdrop-filter: saturate(32%) blur(2px);
+    }
+
+    .swal2-popup.swal2-toast .swal2-title {
+        margin: 0.5em 1em;
+        padding: 0;
+        text-align: initial;
+        margin-bottom: 0px !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-html-container {
+        margin: 3px 1em !important;
+        padding: 0;
+        overflow: initial;
+        font-size: 12.5px;
+        text-align: initial;
+    }
+
+    .swal2-icon.swal2-error {
+        border-color: white !important;
+        color: white !important;
+    }
+
+        .swal2-icon.swal2-error [class^=swal2-x-mark-line] {
+            background-color: white !important;
+        }
+
+    .swal2-popup.swal2-toast .swal2-icon {
+        grid-column: 1;
+        grid-row: 1/99;
+        align-self: center;
+        width: 2.5em !important;
+        min-width: 2.5em !important;
+        height: 2.5em !important;
+        margin: 6px auto !important;
+    }
+
+        .swal2-popup.swal2-toast .swal2-icon.swal2-error [class^=swal2-x-mark-line][class$=right] {
+            left: 6px !important;
+        }
+
+        .swal2-popup.swal2-toast .swal2-icon.swal2-error [class^=swal2-x-mark-line][class$=left] {
+            left: 6px !important;
+        }
+
+        .swal2-popup.swal2-toast .swal2-icon.swal2-error [class^=swal2-x-mark-line] {
+            top: 14.5px !important;
+            width: 21px !important;
+        }
+
+    span.swal2-x-mark {
+        font-size: 11px !important;
+    }
+    /*success*/
+    .swal2-popup.swal2-toast.swal2-icon-success.swal2-show {
+        background: #00aa52dc;
+        color: white;
+        font-size: 12px;
+        -webkit-backdrop-filter: saturate(20%) blur(10px);
+        backdrop-filter: saturate(32%) blur(2px);
+    }
+
+    .swal2-popup.swal2-toast .swal2-title {
+        margin: 0.5em 11px;
+        padding: 0;
+        font-size: 15px;
+        font-weight: 700;
+        text-align: initial;
+    }
+
+    .swal2-popup.swal2-toast .swal2-success [class^=swal2-success-line][class$=tip] {
+        top: 16px !important;
+        left: 3px !important;
+        width: 12px !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-success.swal2-icon-show .swal2-success-line-long {
+        -webkit-animation: swal2-toast-animate-success-line-long .75s;
+        animation: swal2-toast-animate-success-line-long .75s;
+    }
+
+    .swal2-success-circular-line-left {
+        background-color: transparent !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-success [class^=swal2-success-line][class$=long] {
+        top: 13px !important;
+        right: 3px !important;
+        width: 19px !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-icon.swal2-success .swal2-success-ring {
+        width: 2em !important;
+        height: 2em !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-success {
+        border-color: #ffffff !important;
+    }
+
+    .swal2-success-circular-line-right {
+        background-color: transparent !important;
+    }
+
+    .swal2-success-fix {
+        background-color: transparent !important;
+    }
+
+    .swal2-icon.swal2-success [class^=swal2-success-line] {
+        display: block;
+        position: absolute;
+        z-index: 2;
+        height: 0.3125em;
+        border-radius: 0.125em;
+        background-color: #ffffff !important;
+    }
+
+    .swal2-icon.swal2-success .swal2-success-ring {
+        position: absolute;
+        z-index: 2;
+        top: -0.25em;
+        left: -0.25em;
+        box-sizing: content-box;
+        width: 100%;
+        height: 100%;
+        border: none !important;
+        border-radius: 50%;
+    }
+    /*Warning*/
+    .swal2-popup.swal2-toast.swal2-icon-warning.swal2-show {
+        background: #efb000e6;
+        color: white;
+        font-size: 12px;
+        -webkit-backdrop-filter: saturate(20%) blur(10px);
+        backdrop-filter: saturate(32%) blur(2px);
+    }
+
+    .swal2-icon.swal2-warning {
+        border-color: #ffffff !important;
+        color: #fefefe !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-title {
+        margin: 0.5em 11px;
+        padding: 0;
+        font-size: 15px;
+        font-weight: 700;
+        text-align: initial;
+    }
+
+    .swal2-icon.swal2-success .swal2-success-ring {
+        position: absolute;
+        z-index: 2;
+        top: -0.25em;
+        left: -0.25em;
+        box-sizing: content-box;
+        width: 100%;
+        height: 100%;
+        border: none !important;
+        border-radius: 50%;
+    }
+    .insertar th {
+        padding: 9px 7px;
+        font-size: 13px;
+    }
+    td.precio {
+        display: flex;
+        border-left: none;
+        border-right: none;
+        border-top: none;
+        align-items: center;
+        gap: 5px;
+        padding: 4px;
+    }
+    /*paginacion*/
+
+    i.bi.bi-arrow-left-circle {
+        font-size: 12px;
+        color: #000;
+        font-weight: 700;
+    }
+
+    i.bi.bi-arrow-right-circle {
+        font-size: 12px;
+        color: #000;
+        font-weight: 700;
+    }
+
+    a.page-link {
+        border-radius: 5px;
+    }
+
+    td.dataTables_empty {
+        text-align: center;
+    }
+    ul.dtr-details {
+        padding: 0px;
+        font-size: 10px;
+        margin-bottom: -1px;
+    }
+
+        ul.dtr-details > li {
+            border-bottom: 1px solid #dee2e6;
+        }
+
+    div#tablaProducto_filter {
+        display: flex;
+        justify-content: end;
+        margin-bottom: 15px;
+        margin-top: 8px;
+    }
+
+    input.form-control.form-control-sm::placeholder {
+        color: gainsboro;
+    }
+
+    div#tablaProducto_info {
+        font-size: 12px;
+        text-align: justify;
+    }
+
+    div#tablaProducto_paginate {
+        display: flex;
+        justify-content: end;
+    }
+
+    div#tablaProducto_wrapper {
+        overflow-x: hidden !important;
+        padding: 10px !important;
+    }
+
+    .pagination {
+        --bs-pagination-font-size: 12px !important;
+        gap: 5px !important;
+    }
+
+    .form-select-sm {
+        padding: 3px 5px !important;
+        text-align: center;
+    }
+
+    div#tablaProducto_length .form-select {
+        background-image: none;
+        margin-bottom: 15px;
+        margin-top: 8px;
+        border: 1px solid #ced4da;
+        color: #0000008c;
+    }
+
+    table#tablaProducto {
+        color: #333;
+        font-size: 13px;
+        vertical-align: middle;
+        white-space: nowrap;
+        line-height: 27px;
+    }
+
+    .editar,
+    .eliminar {
+        border: none;
+        background-color: transparent;
+    }
+    .dataTables_scrollBody {
+        height: auto !important;
+    }
+    .pagination {
+        font-size: 10px !important;
+    }
+    div#tablaProducto_length {
+        display: flex;
+    }
+    .btn-success {
+        color: #fff;
+        background-color: #28a745;
+        border-color: #28a745;
+        font-size: 11px;
+    }
+    button.btn.btn-light {
+        border: 1px solid #dee2e6;
+        background: transparent;
+        padding: 4px 7px;
+    }
+</style>
